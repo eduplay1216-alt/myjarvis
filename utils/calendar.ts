@@ -1,9 +1,7 @@
 import { gapi } from 'gapi-script';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
-const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'];
 
 let gapiInited = false;
 let tokenClient: any = null;
@@ -22,17 +20,7 @@ export const initGoogleCalendar = (): Promise<void> => {
 
     gapi.load('client', async () => {
       try {
-        const initConfig: any = {
-          discoveryDocs: DISCOVERY_DOCS,
-        };
-
-        if (API_KEY) {
-          initConfig.apiKey = API_KEY;
-        }
-
-        await gapi.client.init(initConfig);
-
-        await gapi.client.load('calendar', 'v3');
+        await gapi.client.init({});
 
         gapiInited = true;
 
@@ -117,8 +105,9 @@ export const createCalendarEvent = async (
   startTime: Date,
   durationMinutes: number
 ): Promise<any> => {
-  if (!gapi?.client?.calendar) {
-    throw new Error('Google Calendar API not initialized');
+  const token = gapi?.client?.getToken();
+  if (!token?.access_token) {
+    throw new Error('Google Calendar not authenticated');
   }
 
   const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
@@ -137,11 +126,21 @@ export const createCalendarEvent = async (
   };
 
   try {
-    const response = await gapi.client.calendar.events.insert({
-      calendarId: 'primary',
-      resource: event,
+    const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(event),
     });
-    return response.result;
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(`Calendar API error: ${errorData.error?.message || response.statusText}`);
+    }
+
+    return await response.json();
   } catch (error) {
     console.error('Error creating calendar event:', error);
     throw error;
@@ -155,8 +154,9 @@ export const updateCalendarEvent = async (
   startTime: Date,
   durationMinutes: number
 ): Promise<any> => {
-  if (!gapi?.client?.calendar) {
-    throw new Error('Google Calendar API not initialized');
+  const token = gapi?.client?.getToken();
+  if (!token?.access_token) {
+    throw new Error('Google Calendar not authenticated');
   }
 
   const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
@@ -175,12 +175,21 @@ export const updateCalendarEvent = async (
   };
 
   try {
-    const response = await gapi.client.calendar.events.update({
-      calendarId: 'primary',
-      eventId: eventId,
-      resource: event,
+    const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(event),
     });
-    return response.result;
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(`Calendar API error: ${errorData.error?.message || response.statusText}`);
+    }
+
+    return await response.json();
   } catch (error) {
     console.error('Error updating calendar event:', error);
     throw error;
@@ -188,15 +197,23 @@ export const updateCalendarEvent = async (
 };
 
 export const deleteCalendarEvent = async (eventId: string): Promise<void> => {
-  if (!gapi?.client?.calendar) {
-    throw new Error('Google Calendar API not initialized');
+  const token = gapi?.client?.getToken();
+  if (!token?.access_token) {
+    throw new Error('Google Calendar not authenticated');
   }
 
   try {
-    await gapi.client.calendar.events.delete({
-      calendarId: 'primary',
-      eventId: eventId,
+    const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token.access_token}`,
+      },
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(`Calendar API error: ${errorData.error?.message || response.statusText}`);
+    }
   } catch (error) {
     console.error('Error deleting calendar event:', error);
     throw error;
@@ -207,21 +224,35 @@ export const getCalendarEvents = async (
   timeMin: Date,
   timeMax: Date
 ): Promise<any[]> => {
-  if (!gapi?.client?.calendar) {
-    throw new Error('Google Calendar API not initialized');
+  const token = gapi?.client?.getToken();
+  if (!token?.access_token) {
+    throw new Error('Google Calendar not authenticated');
   }
 
   try {
-    const response = await gapi.client.calendar.events.list({
-      calendarId: 'primary',
+    const params = new URLSearchParams({
       timeMin: timeMin.toISOString(),
       timeMax: timeMax.toISOString(),
-      showDeleted: false,
-      singleEvents: true,
-      maxResults: 250,
+      showDeleted: 'false',
+      singleEvents: 'true',
+      maxResults: '250',
       orderBy: 'startTime',
     });
-    return response.result.items || [];
+
+    const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(`Calendar API error: ${errorData.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.items || [];
   } catch (error) {
     console.error('Error fetching calendar events:', error);
     throw error;
