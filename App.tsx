@@ -968,19 +968,19 @@ const App: React.FC = () => {
 
       {/* Chat Panel */}
       <main className="flex-1 flex flex-col h-screen min-w-0">
-         <header className="fixed top-0 left-0 right-0 lg:left-auto z-20 px-2 py-3 sm:p-4 bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+         <header className="p-4 bg-gray-900/80 backdrop-blur-sm border-b border-gray-700 flex items-center space-x-4 flex-shrink-0">
             {/* Mobile toggle button */}
-            <button
+            <button 
                 onClick={() => setIsDashboardOpen(true)}
-                className="text-gray-300 hover:text-white lg:hidden p-1"
+                className="text-gray-300 hover:text-white lg:hidden"
                 aria-label="Abrir painel"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
             </button>
             {/* Desktop toggle button */}
-            <button
+            <button 
                 onClick={() => setIsDesktopDashboardExpanded(prev => !prev)}
                 className="hidden lg:block text-gray-300 hover:text-white"
                 aria-label={isDesktopDashboardExpanded ? "Recolher painel" : "Expandir painel"}
@@ -989,27 +989,27 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
             </button>
-            <h2 className="text-base sm:text-lg font-bold text-blue-300">Chat</h2>
+            <h2 className="text-lg font-bold text-blue-300">Chat</h2>
         </header>
 
-        <div ref={chatContainerRef} className="flex-1 px-2 py-3 sm:p-4 space-y-3 sm:space-y-4 md:space-y-6 overflow-y-auto mt-[52px] sm:mt-[64px] mb-[72px] sm:mb-[88px]">
+        <div ref={chatContainerRef} className="flex-1 p-2 sm:p-4 space-y-4 sm:space-y-6 overflow-y-auto">
           {messages.map((msg, index) => (
-            <ChatMessage
-              key={index}
-              message={msg}
-              isLoading={isLoading && index === messages.length - 1}
+            <ChatMessage 
+              key={index} 
+              message={msg} 
+              isLoading={isLoading && index === messages.length - 1} 
             />
           ))}
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 lg:left-auto z-20 px-2 py-2 sm:p-4 bg-gray-900/95 backdrop-blur-sm border-t border-gray-700">
+        <div className="p-2 sm:p-4 bg-gray-900/80 backdrop-blur-sm border-t border-gray-700">
           <div className="max-w-4xl mx-auto flex items-center">
-              <ChatInput
-                  onSendMessage={handleSendMessage}
+              <ChatInput 
+                  onSendMessage={handleSendMessage} 
                   onAudioUpload={handleAudioUpload}
-                  isLoading={isLoading}
+                  isLoading={isLoading} 
                   isRecording={isRecording}
-                  onToggleRecording={handleToggleRecording}
+                  onToggleRecording={handleToggleRecording} 
               />
           </div>
         </div>
