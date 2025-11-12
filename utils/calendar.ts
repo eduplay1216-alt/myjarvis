@@ -188,3 +188,71 @@ export const getCalendarEvents = async (
     throw error;
   }
 };
+
+export const syncAllEvents = async (
+  localTasks: any[],
+  onProgress?: (message: string) => void
+): Promise<{ synced: number; created: number; updated: number; deleted: number }> => {
+  try {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+    const oneYearLater = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+
+    onProgress?.('Buscando eventos do Google Calendar...');
+    const calendarEvents = await getCalendarEvents(sixMonthsAgo, oneYearLater);
+
+    let synced = 0;
+    let created = 0;
+    let updated = 0;
+    let deleted = 0;
+
+    const calendarEventIds = new Set(calendarEvents.map(e => e.id));
+    const localTasksWithDates = localTasks.filter(t => t.due_at);
+
+    for (const task of localTasksWithDates) {
+      if (task.google_calendar_event_id && calendarEventIds.has(task.google_calendar_event_id)) {
+        onProgress?.(`Atualizando: ${task.description}`);
+        await updateCalendarEvent(
+          task.google_calendar_event_id,
+          task.description,
+          task.description,
+          new Date(task.due_at),
+          task.duration || 60
+        );
+        updated++;
+      } else if (!task.google_calendar_event_id) {
+        onProgress?.(`Criando: ${task.description}`);
+        const event = await createCalendarEvent(
+          task.description,
+          task.description,
+          new Date(task.due_at),
+          task.duration || 60
+        );
+        created++;
+        synced++;
+      } else {
+        synced++;
+      }
+    }
+
+    const localEventIds = new Set(
+      localTasks
+        .filter(t => t.google_calendar_event_id)
+        .map(t => t.google_calendar_event_id)
+    );
+
+    for (const event of calendarEvents) {
+      if (!localEventIds.has(event.id)) {
+        onProgress?.(`Removendo do Google Calendar: ${event.summary}`);
+        await deleteCalendarEvent(event.id);
+        deleted++;
+      }
+    }
+
+    onProgress?.('Sincronização completa!');
+    return { synced, created, updated, deleted };
+  } catch (error) {
+    console.error('Error syncing all events:', error);
+    throw error;
+  }
+};

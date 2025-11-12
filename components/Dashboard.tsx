@@ -10,6 +10,7 @@ interface DashboardProps {
     onEditTask: (id: number, updates: { description?: string; due_at?: string | null; duration?: number | null }) => void;
     onSyncToCalendar?: (taskId: number) => void;
     onSyncFromCalendar?: () => void;
+    onSyncAllToCalendar?: () => void;
 }
 
 const FinancialCard: React.FC<{ title: string; amount: number; colorClass: string }> = ({ title, amount, colorClass }) => (
@@ -243,11 +244,12 @@ const TaskModal: React.FC<{
     );
 };
 
-export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpdateTask, onDeleteTask, onEditTask, onSyncToCalendar, onSyncFromCalendar }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpdateTask, onDeleteTask, onEditTask, onSyncToCalendar, onSyncFromCalendar, onSyncAllToCalendar }) => {
     const [activeSection, setActiveSection] = useState<'financial' | 'calendar' | null>('calendar');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [isCalendarAuthenticated, setIsCalendarAuthenticated] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     const income = transactions.filter(t => t.type === 'receita').reduce((sum, t) => sum + t.amount, 0);
     const expenses = transactions.filter(t => t.type === 'despesa').reduce((sum, t) => sum + t.amount, 0);
@@ -359,16 +361,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                     <div className="flex flex-col flex-1 h-full border border-t-0 border-gray-700/50 rounded-b-lg p-4">
                         <div className="mb-4 space-y-2">
                             <GoogleCalendarAuth onAuthChange={setIsCalendarAuthenticated} />
-                            {isCalendarAuthenticated && onSyncFromCalendar && (
-                                <button
-                                    onClick={onSyncFromCalendar}
-                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm flex items-center justify-center space-x-2"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                    <span>Importar eventos do Google Calendar</span>
-                                </button>
+                            {isCalendarAuthenticated && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {onSyncFromCalendar && (
+                                        <button
+                                            onClick={onSyncFromCalendar}
+                                            disabled={isSyncing}
+                                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors text-sm flex items-center justify-center space-x-2"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                            </svg>
+                                            <span>Importar do Google</span>
+                                        </button>
+                                    )}
+                                    {onSyncAllToCalendar && (
+                                        <button
+                                            onClick={async () => {
+                                                setIsSyncing(true);
+                                                await onSyncAllToCalendar();
+                                                setIsSyncing(false);
+                                            }}
+                                            disabled={isSyncing}
+                                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors text-sm flex items-center justify-center space-x-2"
+                                        >
+                                            {isSyncing ? (
+                                                <>
+                                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    <span>Sincronizando...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                    </svg>
+                                                    <span>Sincronizar Tudo</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
                         <div className="flex justify-between items-center mb-4">

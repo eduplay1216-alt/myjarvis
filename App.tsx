@@ -9,7 +9,7 @@ import { ChatInput } from './components/ChatInput';
 import { Dashboard } from './components/Dashboard';
 import { Auth } from './components/Auth';
 import { createBlob, decode, decodeAudioData } from './utils/audio';
-import { createCalendarEvent, deleteCalendarEvent, getCalendarEvents } from './utils/calendar';
+import { createCalendarEvent, deleteCalendarEvent, getCalendarEvents, syncAllEvents } from './utils/calendar';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -368,6 +368,32 @@ const App: React.FC = () => {
       await refreshDashboardData();
     } catch (error) {
       console.error('Error syncing from calendar:', error);
+    }
+  };
+
+  const handleSyncAllToCalendar = async () => {
+    try {
+      const result = await syncAllEvents(tasks);
+
+      const updatedTasks = await supabase
+        .from('tasks')
+        .select('*')
+        .order('due_at', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: false });
+
+      if (updatedTasks.data) {
+        setTasks(updatedTasks.data);
+      }
+
+      const totalActions = result.created + result.updated + result.deleted;
+      const message = totalActions > 0
+        ? `Sincronização completa! ${result.created} criado(s), ${result.updated} atualizado(s), ${result.deleted} removido(s).`
+        : 'Agendas já estão sincronizadas!';
+
+      setMessages(prev => [...prev, { role: 'model', text: message }]);
+    } catch (error) {
+      console.error('Error syncing all to calendar:', error);
+      setMessages(prev => [...prev, { role: 'model', text: 'Erro ao sincronizar com o Google Calendar. Verifique sua conexão.' }]);
     }
   };
 
@@ -777,6 +803,7 @@ const App: React.FC = () => {
             onEditTask={handleEditTask}
             onSyncToCalendar={handleSyncToCalendar}
             onSyncFromCalendar={handleSyncFromCalendar}
+            onSyncAllToCalendar={handleSyncAllToCalendar}
           />
         )}
       </aside>
