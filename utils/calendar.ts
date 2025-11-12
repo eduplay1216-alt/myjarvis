@@ -66,6 +66,12 @@ export const isSignedIn = (): boolean => {
   return token !== null;
 };
 
+export const setCalendarToken = (accessToken: string): void => {
+  if (gapi?.client) {
+    gapi.client.setToken({ access_token: accessToken });
+  }
+};
+
 export const handleSignoutClick = () => {
   const token = gapi.client.getToken();
   if (token !== null) {

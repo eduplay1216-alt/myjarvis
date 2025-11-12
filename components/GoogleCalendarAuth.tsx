@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { initGoogleCalendar, handleAuthClick, isSignedIn, handleSignoutClick } from '../utils/calendar';
+import { createClient } from '@supabase/supabase-js';
+import { initGoogleCalendar, handleAuthClick, isSignedIn, handleSignoutClick, setCalendarToken } from '../utils/calendar';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 interface GoogleCalendarAuthProps {
   onAuthChange: (isAuthenticated: boolean) => void;
@@ -14,9 +19,29 @@ export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthCh
     const initCalendar = async () => {
       try {
         await initGoogleCalendar();
-        const signedIn = isSignedIn();
-        setIsAuthenticated(signedIn);
-        onAuthChange(signedIn);
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          const { data: tokenData } = await supabase
+            .from('google_calendar_tokens')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (tokenData?.access_token) {
+            setCalendarToken(tokenData.access_token);
+            setIsAuthenticated(true);
+            onAuthChange(true);
+          } else {
+            const signedIn = isSignedIn();
+            setIsAuthenticated(signedIn);
+            onAuthChange(signedIn);
+          }
+        } else {
+          const signedIn = isSignedIn();
+          setIsAuthenticated(signedIn);
+          onAuthChange(signedIn);
+        }
       } catch (err) {
         console.error('Error initializing Google Calendar:', err);
         setError('Erro ao inicializar Google Calendar');
@@ -33,6 +58,20 @@ export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthCh
       setIsLoading(true);
       setError(null);
       await handleAuthClick();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const token = (window as any).gapi?.client?.getToken()?.access_token;
+        if (token) {
+          await supabase.from('google_calendar_tokens').upsert({
+            user_id: session.user.id,
+            access_token: token,
+            expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+
       setIsAuthenticated(true);
       onAuthChange(true);
     } catch (err) {
@@ -43,8 +82,17 @@ export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthCh
     }
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     handleSignoutClick();
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      await supabase
+        .from('google_calendar_tokens')
+        .delete()
+        .eq('user_id', session.user.id);
+    }
+
     setIsAuthenticated(false);
     onAuthChange(false);
   };

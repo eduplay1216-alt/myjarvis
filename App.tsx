@@ -404,12 +404,66 @@ const App: React.FC = () => {
   }, [messages]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
         setSession(session);
+
+        if (session?.provider_token && session?.user?.id) {
+          const { data: existingToken } = await supabase
+            .from('google_calendar_tokens')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (!existingToken) {
+            await supabase.from('google_calendar_tokens').insert({
+              user_id: session.user.id,
+              access_token: session.provider_token,
+              refresh_token: session.provider_refresh_token || null,
+              expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+            });
+          } else {
+            await supabase
+              .from('google_calendar_tokens')
+              .update({
+                access_token: session.provider_token,
+                refresh_token: session.provider_refresh_token || existingToken.refresh_token,
+                expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('user_id', session.user.id);
+          }
+        }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
         setSession(session);
+
+        if (session?.provider_token && session?.user?.id) {
+          const { data: existingToken } = await supabase
+            .from('google_calendar_tokens')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (!existingToken) {
+            await supabase.from('google_calendar_tokens').insert({
+              user_id: session.user.id,
+              access_token: session.provider_token,
+              refresh_token: session.provider_refresh_token || null,
+              expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+            });
+          } else {
+            await supabase
+              .from('google_calendar_tokens')
+              .update({
+                access_token: session.provider_token,
+                refresh_token: session.provider_refresh_token || existingToken.refresh_token,
+                expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq('user_id', session.user.id);
+          }
+        }
     });
 
     return () => subscription.unsubscribe();
