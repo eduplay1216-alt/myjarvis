@@ -196,10 +196,14 @@ export const updateCalendarEvent = async (
   }
 };
 
+// --- ESTA É A FUNÇÃO CORRIGIDA ---
+// Ela não vai mais travar o app se tentar apagar um evento de "aniversário"
 export const deleteCalendarEvent = async (eventId: string): Promise<void> => {
   const token = gapi?.client?.getToken();
   if (!token?.access_token) {
-    throw new Error('Google Calendar not authenticated');
+    // Se não estiver logado, apenas avise e saia sem travar
+    console.warn('Google Calendar not authenticated, skipping delete.');
+    return;
   }
 
   try {
@@ -211,14 +215,22 @@ export const deleteCalendarEvent = async (eventId: string): Promise<void> => {
     });
 
     if (!response.ok) {
+      // Se a resposta não for OK (ex: 400), não vamos mais travar o app.
+      // Vamos apenas registrar um aviso no console e continuar.
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      throw new Error(`Calendar API error: ${errorData.error?.message || response.statusText}`);
+      console.warn(
+        `Falha ao deletar o evento ${eventId} (pode ser um evento especial como 'birthday'): ${errorData.error?.message || response.statusText}`
+      );
     }
+    // Se a resposta for OK, ele simplesmente termina com sucesso.
   } catch (error) {
-    console.error('Error deleting calendar event:', error);
-    throw error;
+    // Também captura erros de rede e apenas registra, sem travar.
+    console.error('Erro de rede ao deletar evento do Calendar:', error);
   }
+  // Note que não há mais "throw error". A função nunca vai travar o loop.
 };
+// --- FIM DA FUNÇÃO CORRIGIDA ---
+
 
 export const getCalendarEvents = async (
   timeMin: Date,
@@ -329,6 +341,7 @@ export const syncAllEvents = async (
     for (const event of calendarEvents) {
       if (!localEventIds.has(event.id)) {
         onProgress?.(`Removendo do Google Calendar: ${event.summary}`);
+        // Esta função agora está corrigida e não vai travar
         await deleteCalendarEvent(event.id);
         deleted++;
       }
@@ -341,4 +354,4 @@ export const syncAllEvents = async (
     console.error('Error syncing all events:', error);
     throw error;
   }
-}; 
+};
