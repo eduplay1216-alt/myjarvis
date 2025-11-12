@@ -107,6 +107,62 @@ const batchUpdateTasksTool: FunctionDeclaration = {
     },
 };
 
+const addCalendarEventTool: FunctionDeclaration = {
+    name: 'addCalendarEvent',
+    description: 'Adiciona um evento ao Google Calendar do usuário. Use quando o usuário pedir para adicionar algo diretamente no Google Calendar.',
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            title: { type: Type.STRING, description: 'O título do evento.' },
+            description: { type: Type.STRING, description: 'A descrição do evento.' },
+            startTime: { type: Type.STRING, description: "Data e hora de início no formato ISO 8601 (ex: '2024-08-15T09:00:00Z')." },
+            durationMinutes: { type: Type.NUMBER, description: "Duração do evento em minutos." },
+        },
+        required: ['title', 'description', 'startTime', 'durationMinutes'],
+    },
+};
+
+const updateCalendarEventTool: FunctionDeclaration = {
+    name: 'updateCalendarEvent',
+    description: 'Atualiza um evento existente no Google Calendar.',
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            eventId: { type: Type.STRING, description: 'O ID do evento a ser atualizado.' },
+            title: { type: Type.STRING, description: 'O novo título do evento.' },
+            description: { type: Type.STRING, description: 'A nova descrição do evento.' },
+            startTime: { type: Type.STRING, description: "Nova data e hora de início no formato ISO 8601." },
+            durationMinutes: { type: Type.NUMBER, description: "Nova duração do evento em minutos." },
+        },
+        required: ['eventId', 'title', 'description', 'startTime', 'durationMinutes'],
+    },
+};
+
+const deleteCalendarEventTool: FunctionDeclaration = {
+    name: 'deleteCalendarEvent',
+    description: 'Remove um evento do Google Calendar.',
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            eventId: { type: Type.STRING, description: 'O ID do evento a ser removido.' },
+        },
+        required: ['eventId'],
+    },
+};
+
+const getCalendarEventsTool: FunctionDeclaration = {
+    name: 'getCalendarEvents',
+    description: 'Lista eventos do Google Calendar em um período específico.',
+    parameters: {
+        type: Type.OBJECT,
+        properties: {
+            timeMin: { type: Type.STRING, description: "Data/hora de início no formato ISO 8601." },
+            timeMax: { type: Type.STRING, description: "Data/hora de fim no formato ISO 8601." },
+        },
+        required: ['timeMin', 'timeMax'],
+    },
+};
+
 // Fix: Define a local LiveSession interface since it is not exported from the library.
 // This interface is based on the usage of the session object in this file.
 interface LiveSession {
@@ -257,15 +313,47 @@ const App: React.FC = () => {
         async getFinancialSummary() {
             const { data, error } = await supabase.from('transactions').select('amount, type');
             if (error) return { success: false, error: error.message };
-            
+
             const income = data.filter(t => t.type === 'receita').reduce((sum, t) => sum + t.amount, 0);
             const expenses = data.filter(t => t.type === 'despesa').reduce((sum, t) => sum + t.amount, 0);
             const balance = income + expenses; // expenses are negative
-            
+
             return {
                 success: true,
                 summary: `Receita Total: R$${income.toFixed(2)}, Despesa Total: R$${Math.abs(expenses).toFixed(2)}, Saldo Atual: R$${balance.toFixed(2)}`
             };
+        },
+        async addCalendarEvent(title: string, description: string, startTime: string, durationMinutes: number) {
+            try {
+                const result = await createCalendarEvent(title, description, new Date(startTime), durationMinutes);
+                return { success: true, data: result, message: `Evento "${title}" adicionado ao Google Calendar.` };
+            } catch (error: any) {
+                return { success: false, error: error.message || 'Erro ao adicionar evento ao Calendar' };
+            }
+        },
+        async updateCalendarEvent(eventId: string, title: string, description: string, startTime: string, durationMinutes: number) {
+            try {
+                const result = await updateCalendarEvent(eventId, title, description, new Date(startTime), durationMinutes);
+                return { success: true, data: result, message: `Evento atualizado no Google Calendar.` };
+            } catch (error: any) {
+                return { success: false, error: error.message || 'Erro ao atualizar evento' };
+            }
+        },
+        async deleteCalendarEvent(eventId: string) {
+            try {
+                await deleteCalendarEvent(eventId);
+                return { success: true, message: `Evento removido do Google Calendar.` };
+            } catch (error: any) {
+                return { success: false, error: error.message || 'Erro ao remover evento' };
+            }
+        },
+        async getCalendarEvents(timeMin: string, timeMax: string) {
+            try {
+                const events = await getCalendarEvents(new Date(timeMin), new Date(timeMax));
+                return { success: true, events, count: events.length };
+            } catch (error: any) {
+                return { success: false, error: error.message || 'Erro ao buscar eventos do Calendar' };
+            }
         }
     };
   }, [session]);
@@ -556,7 +644,7 @@ const App: React.FC = () => {
 
         const config = {
             systemInstruction: dynamicSystemInstruction,
-            tools: [{ functionDeclarations: [addTransactionTool, addTaskTool, getTasksTool, deleteTaskTool, getFinancialSummaryTool, batchUpdateTasksTool] }],
+            tools: [{ functionDeclarations: [addTransactionTool, addTaskTool, getTasksTool, deleteTaskTool, getFinancialSummaryTool, batchUpdateTasksTool, addCalendarEventTool, updateCalendarEventTool, deleteCalendarEventTool, getCalendarEventsTool] }],
         };
         
         let finalResponse: string | null = null;
@@ -828,18 +916,16 @@ const App: React.FC = () => {
       
       {/* Dashboard Panel */}
       <aside className={`
-        // Mobile & Tablet off-canvas behaviour
-        fixed inset-y-0 left-0 z-40 w-full md:w-[calc(100%-50px)] md:max-w-none transform transition-transform duration-300 ease-in-out bg-gray-900 p-6 flex flex-col
+        fixed inset-y-0 left-0 z-40 w-full sm:w-4/5 md:w-3/4 transform transition-transform duration-300 ease-in-out bg-gray-900 p-4 sm:p-6 flex flex-col
         ${isDashboardOpen ? 'translate-x-0' : '-translate-x-full'}
 
-        // Desktop collapsible behaviour
         lg:relative lg:translate-x-0 lg:flex lg:flex-col lg:transition-all lg:duration-300 overflow-hidden
         ${isDesktopDashboardExpanded ? 'lg:w-3/5 lg:p-6 lg:border-r lg:border-gray-700' : 'lg:w-0 lg:p-0'}
       `}>
-        <div className="flex justify-between items-center mb-6 flex-shrink-0">
+        <div className="flex justify-between items-center mb-4 sm:mb-6 flex-shrink-0">
           <div>
-            <h1 className="text-3xl font-bold text-blue-300 mb-2">J.A.R.V.I.S.</h1>
-            <p className="text-gray-400">Seu painel de controle.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-blue-300 mb-1 sm:mb-2">J.A.R.V.I.S.</h1>
+            <p className="text-sm sm:text-base text-gray-400">Seu painel de controle.</p>
           </div>
           <div className="flex items-center space-x-4">
               <button
