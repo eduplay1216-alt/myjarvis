@@ -461,39 +461,70 @@ const App: React.FC = () => {
 
   // Em App.tsx
 
+// ... (imports e todo o código anterior do App.tsx) ...
+
+// Cole o código do App.tsx até a função handleSyncAllToCalendar
+// Substitua a função inteira pelo código abaixo:
+
   const handleSyncAllToCalendar = async () => {
+    if (!session?.user?.id) {
+      console.error("Usuário não autenticado, não é possível sincronizar.");
+      return;
+    }
+    const userId = session.user.id;
+
     try {
-      // 1. Chama a função de sincronização, que agora retorna as atualizações
+      // 1. Chama a função de sincronização, que agora retorna mais dados
       const result = await syncAllEvents(tasks);
 
-      // 2. ATUALIZAÇÃO IMPORTANTE: Aplica as atualizações pendentes no Supabase
+      // 2. Aplica as atualizações de VÍNCULO (SB -> GC)
+      // (Atualiza tarefas do Supabase com o ID do Google Calendar recém-criado)
       if (result.updates.length > 0) {
-        // Mapeia todas as promessas de atualização
         const updatePromises = result.updates.map(update =>
           supabase
             .from('tasks')
             .update({ google_calendar_event_id: update.newEventId })
             .eq('id', update.taskId)
         );
-        // Espera todas as atualizações terminarem
         await Promise.all(updatePromises);
       }
 
-      // 3. CORREÇÃO: Usa a função refreshDashboardData() para recarregar o estado
+      // 3. NOVO: Aplica as ADIÇÕES (GC -> SB)
+      // (Cria novas tarefas no Supabase com base nos eventos do Google)
+      if (result.tasksToAdd.length > 0) {
+        // Adiciona o user_id a cada tarefa
+        const tasksWithUserId = result.tasksToAdd.map(task => ({
+          ...task,
+          user_id: userId,
+        }));
+        
+        // Insere todas as novas tarefas no Supabase de uma vez
+        const { error } = await supabase.from('tasks').insert(tasksWithUserId);
+        
+        if (error) {
+          console.error('Erro ao inserir tarefas vindas do Google Calendar:', error);
+          throw new Error(error.message); // Lança o erro para o catch
+        }
+      }
+
+      // 4. Recarrega o estado do dashboard (essencial)
       await refreshDashboardData();
 
-      // 4. Mostra a mensagem de sucesso (agora usa 'result.created' e não 'result.created.count')
-      const totalActions = result.created + result.updated + result.deleted;
+      // 5. Mostra a mensagem de sucesso atualizada
+      const totalActions = result.created + result.updated + result.added;
       const message = totalActions > 0
-        ? `Sincronização completa! ${result.created} criado(s), ${result.updated} atualizado(s), ${result.deleted} removido(s).`
+        ? `Sincronização completa! ${result.created} criado(s) no Google, ${result.updated} atualizado(s) no Google, ${result.added} importado(s) do Google.`
         : 'Agendas já estão sincronizadas!';
 
       setMessages(prev => [...prev, { role: 'model', text: message }]);
+      
     } catch (error) {
       console.error('Error syncing all to calendar:', error);
       setMessages(prev => [...prev, { role: 'model', text: 'Erro ao sincronizar com o Google Calendar. Verifique sua conexão.' }]);
     }
   };
+
+// ... (continue com o resto do código de App.tsx) ...
 
   useEffect(() => {
     if (chatContainerRef.current) {
