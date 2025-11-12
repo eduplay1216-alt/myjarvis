@@ -1,12 +1,11 @@
 import { gapi } from 'gapi-script';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'];
 
 let gapiInited = false;
-let gisInited = false;
+let tokenClient: any = null;
 
 export const initGoogleCalendar = (): Promise<void> => {
   return new Promise((resolve, reject) => {
@@ -18,10 +17,18 @@ export const initGoogleCalendar = (): Promise<void> => {
     gapi.load('client', async () => {
       try {
         await gapi.client.init({
-          apiKey: API_KEY,
           discoveryDocs: DISCOVERY_DOCS,
         });
         gapiInited = true;
+
+        if ((window as any).google?.accounts?.oauth2) {
+          tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: SCOPES,
+            callback: '',
+          });
+        }
+
         resolve();
       } catch (error) {
         reject(error);
@@ -32,19 +39,25 @@ export const initGoogleCalendar = (): Promise<void> => {
 
 export const handleAuthClick = (): Promise<void> => {
   return new Promise((resolve, reject) => {
-    const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      callback: (response: any) => {
-        if (response.error) {
-          reject(response);
-        } else {
-          resolve();
-        }
-      },
-    });
+    if (!tokenClient) {
+      reject(new Error('Token client not initialized'));
+      return;
+    }
 
-    tokenClient.requestAccessToken();
+    tokenClient.callback = (response: any) => {
+      if (response.error) {
+        reject(response);
+      } else {
+        gapi.client.setToken({ access_token: response.access_token });
+        resolve();
+      }
+    };
+
+    if (gapi.client.getToken() === null) {
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+      tokenClient.requestAccessToken({ prompt: '' });
+    }
   });
 };
 
