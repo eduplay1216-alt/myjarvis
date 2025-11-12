@@ -439,9 +439,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                 </div>
-                <div className={`transition-all duration-500 ease-in-out overflow-hidden ${activeSection === 'calendar' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <div className="flex flex-col flex-1 border border-t-0 border-gray-700/50 rounded-b-lg p-4 overflow-y-auto">
-                        <div className="mb-4 space-y-2">
+                <div className={`flex flex-col transition-all duration-500 ease-in-out ${activeSection === 'calendar' ? 'flex-1 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                    <div className="flex flex-col flex-1 border border-t-0 border-gray-700/50 rounded-b-lg p-4">
+                        <div className="mb-4 space-y-2 flex-shrink-0">
                             <GoogleCalendarAuth onAuthChange={setIsCalendarAuthenticated} />
                             {isCalendarAuthenticated && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -485,7 +485,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                                 </div>
                             )}
                         </div>
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex justify-between items-center mb-4 flex-shrink-0">
                             <h3 className="text-lg font-semibold text-gray-200">
                                 {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(currentDate)}
                             </h3>
@@ -498,8 +498,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                                 </button>
                             </div>
                         </div>
-                        <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700/50">
-                            <div className="overflow-y-auto max-h-[600px]">
+                        <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700/50 flex-1 min-h-0">
+                            <div className="overflow-y-auto h-full">
                                 {renderCalendar()}
                             </div>
                         </div>
