@@ -1,0 +1,7 @@
+{
+  "name": "J.A.R.V.I.S. Personal Chat",
+  "description": "A personal chat application with persistent memory, styled after J.A.R.V.I.S. It uses the Gemini API for responses and localStorage to remember the entire conversation history.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
