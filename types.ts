@@ -20,4 +20,5 @@ export interface Task {
   is_completed: boolean;
   due_at?: string | null;
   duration: number | null;
+  google_calendar_event_id?: string | null;
 }

@@ -9,6 +9,7 @@ import { ChatInput } from './components/ChatInput';
 import { Dashboard } from './components/Dashboard';
 import { Auth } from './components/Auth';
 import { createBlob, decode, decodeAudioData } from './utils/audio';
+import { createCalendarEvent, deleteCalendarEvent, getCalendarEvents } from './utils/calendar';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -306,6 +307,68 @@ const App: React.FC = () => {
     const { error } = await supabase.from('tasks').update(updates).eq('id', id);
     if (error) console.error("Error editing task:", error);
     else await refreshDashboardData();
+  };
+
+  const handleSyncToCalendar = async (taskId: number) => {
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task || !task.due_at) {
+        console.error('Task not found or has no due date');
+        return;
+      }
+
+      const calendarEvent = await createCalendarEvent(
+        task.description,
+        task.description,
+        new Date(task.due_at),
+        task.duration || 60
+      );
+
+      const { error } = await supabase
+        .from('tasks')
+        .update({ google_calendar_event_id: calendarEvent.id })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error updating task with calendar event ID:', error);
+      } else {
+        await refreshDashboardData();
+      }
+    } catch (error) {
+      console.error('Error syncing to calendar:', error);
+    }
+  };
+
+  const handleSyncFromCalendar = async () => {
+    try {
+      const now = new Date();
+      const oneMonthLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      const events = await getCalendarEvents(now, oneMonthLater);
+
+      for (const event of events) {
+        if (!event.start?.dateTime || !event.summary) continue;
+
+        const existingTask = tasks.find(t => t.google_calendar_event_id === event.id);
+        if (existingTask) continue;
+
+        const startTime = new Date(event.start.dateTime);
+        const endTime = event.end?.dateTime ? new Date(event.end.dateTime) : new Date(startTime.getTime() + 60 * 60 * 1000);
+        const duration = Math.round((endTime.getTime() - startTime.getTime()) / (60 * 1000));
+
+        await supabase.from('tasks').insert({
+          description: event.summary,
+          due_at: startTime.toISOString(),
+          duration: duration,
+          google_calendar_event_id: event.id,
+          user_id: session?.user?.id,
+        });
+      }
+
+      await refreshDashboardData();
+    } catch (error) {
+      console.error('Error syncing from calendar:', error);
+    }
   };
 
   useEffect(() => {
@@ -706,12 +769,14 @@ const App: React.FC = () => {
               <p className="text-sm whitespace-pre-wrap">{dbError}</p>
           </div>
         ) : (
-          <Dashboard 
-            transactions={transactions} 
-            tasks={tasks} 
-            onUpdateTask={handleUpdateTask} 
+          <Dashboard
+            transactions={transactions}
+            tasks={tasks}
+            onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
             onEditTask={handleEditTask}
+            onSyncToCalendar={handleSyncToCalendar}
+            onSyncFromCalendar={handleSyncFromCalendar}
           />
         )}
       </aside>

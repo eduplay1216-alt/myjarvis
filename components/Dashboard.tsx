@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Transaction, Task } from '../types';
+import { GoogleCalendarAuth } from './GoogleCalendarAuth';
 
 interface DashboardProps {
     transactions: Transaction[];
@@ -7,6 +8,8 @@ interface DashboardProps {
     onUpdateTask: (id: number, isCompleted: boolean) => void;
     onDeleteTask: (id: number) => void;
     onEditTask: (id: number, updates: { description?: string; due_at?: string | null; duration?: number | null }) => void;
+    onSyncToCalendar?: (taskId: number) => void;
+    onSyncFromCalendar?: () => void;
 }
 
 const FinancialCard: React.FC<{ title: string; amount: number; colorClass: string }> = ({ title, amount, colorClass }) => (
@@ -40,7 +43,8 @@ const TimedTaskItem: React.FC<{
     onUpdateTask: (id: number, isCompleted: boolean) => void;
     onDeleteTask: (id: number) => void;
     onEditTask: (id: number, updates: { description?: string; due_at?: string | null; duration?: number | null }) => void;
-}> = ({ task, onUpdateTask, onDeleteTask, onEditTask }) => {
+    onSyncToCalendar?: (taskId: number) => void;
+}> = ({ task, onUpdateTask, onDeleteTask, onEditTask, onSyncToCalendar }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editFormData, setEditFormData] = useState({ description: '', due_at: '', duration: '' });
 
@@ -124,6 +128,16 @@ const TimedTaskItem: React.FC<{
                 <p className={`text-xs ${task.is_completed ? 'text-gray-500' : 'text-blue-200'}`}>{timeFormatted} ({durationInMinutes} min)</p>
             </div>
             <div className="flex items-center space-x-2 pl-2">
+                 {onSyncToCalendar && !task.google_calendar_event_id && task.due_at && (
+                     <button onClick={(e) => { e.stopPropagation(); onSyncToCalendar(task.id); }} className="text-gray-300 hover:text-blue-400" aria-label="Sync to Google Calendar" title="Sincronizar com Google Calendar">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                     </button>
+                 )}
+                 {task.google_calendar_event_id && (
+                     <div className="text-green-400" title="Sincronizado com Google Calendar">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                     </div>
+                 )}
                  <button onClick={(e) => { e.stopPropagation(); onUpdateTask(task.id, !task.is_completed); }} className="text-gray-300 hover:text-white" aria-label="Toggle complete">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                  </button>
@@ -172,6 +186,7 @@ const TaskModal: React.FC<{
     onUpdateTask: (id: number, isCompleted: boolean) => void;
     onDeleteTask: (id: number) => void;
     onEditTask: (id: number, updates: { description?: string; due_at?: string | null; duration?: number | null }) => void;
+    onSyncToCalendar?: (taskId: number) => void;
 }> = ({ date, tasks, onClose, ...props }) => {
     const formattedDate = new Intl.DateTimeFormat('pt-BR', {
         weekday: 'long',
@@ -228,10 +243,11 @@ const TaskModal: React.FC<{
     );
 };
 
-export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpdateTask, onDeleteTask, onEditTask }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpdateTask, onDeleteTask, onEditTask, onSyncToCalendar, onSyncFromCalendar }) => {
     const [activeSection, setActiveSection] = useState<'financial' | 'calendar' | null>('calendar');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [isCalendarAuthenticated, setIsCalendarAuthenticated] = useState(false);
 
     const income = transactions.filter(t => t.type === 'receita').reduce((sum, t) => sum + t.amount, 0);
     const expenses = transactions.filter(t => t.type === 'despesa').reduce((sum, t) => sum + t.amount, 0);
@@ -329,7 +345,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
 
             {/* Calendar Accordion */}
             <section className="flex flex-col flex-1 min-h-0">
-                <div 
+                <div
                     className="flex justify-between items-center p-3 cursor-pointer bg-gray-800/50 rounded-lg border border-gray-700/50 hover:bg-gray-700/30 transition-colors"
                     onClick={() => handleToggleSection('calendar')}
                     aria-expanded={activeSection === 'calendar'}
@@ -341,6 +357,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                 </div>
                 <div className={`transition-all duration-500 ease-in-out overflow-hidden ${activeSection === 'calendar' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                     <div className="flex flex-col flex-1 h-full border border-t-0 border-gray-700/50 rounded-b-lg p-4">
+                        <div className="mb-4 space-y-2">
+                            <GoogleCalendarAuth onAuthChange={setIsCalendarAuthenticated} />
+                            {isCalendarAuthenticated && onSyncFromCalendar && (
+                                <button
+                                    onClick={onSyncFromCalendar}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm flex items-center justify-center space-x-2"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    <span>Importar eventos do Google Calendar</span>
+                                </button>
+                            )}
+                        </div>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-semibold text-gray-200">
                                 {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(currentDate)}
@@ -367,13 +397,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
             </section>
 
             {selectedDate && (
-                <TaskModal 
+                <TaskModal
                     date={selectedDate}
                     tasks={tasksByDate.get(`${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`) || []}
                     onClose={() => setSelectedDate(null)}
                     onUpdateTask={onUpdateTask}
                     onDeleteTask={onDeleteTask}
                     onEditTask={onEditTask}
+                    onSyncToCalendar={onSyncToCalendar}
                 />
             )}
         </div>
