@@ -297,7 +297,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
             
             const isToday = dateKey === todayKey;
             const cellClasses = `
-                border-r border-b border-gray-700/50 p-1 sm:p-2 flex flex-col h-20 sm:h-24 md:h-32 
+                border-r border-b border-gray-700/50 p-2 flex flex-col min-h-[100px]
                 transition-colors duration-200 cursor-pointer hover:bg-gray-700/50
                 ${isToday ? 'bg-blue-900/30' : ''}
             `;
@@ -305,14 +305,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
             cells.push(
                 <div key={day} className={cellClasses} onClick={() => handleDayClick(day)}>
                     <span className={`text-sm font-medium ${isToday ? 'text-blue-300' : 'text-gray-300'}`}>{day}</span>
-                    <div className="mt-1 flex-1 overflow-y-auto text-[10px] sm:text-xs">
+                    <div className="mt-1 flex-1 overflow-y-auto text-xs space-y-0.5">
                         {dayTasks.slice(0, 3).map(task => (
                             <div key={task.id} className="flex items-center">
-                                <div className={`flex-shrink-0 w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full mr-1 sm:mr-1.5 ${task.is_completed ? 'bg-gray-500' : 'bg-blue-400'}`}></div>
-                                <p className={`truncate leading-tight ${task.is_completed ? 'line-through text-gray-500' : 'text-gray-400'}`}>{task.description}</p>
+                                <div className={`flex-shrink-0 w-1.5 h-1.5 rounded-full mr-1.5 ${task.is_completed ? 'bg-gray-500' : 'bg-blue-400'}`}></div>
+                                <p className={`truncate leading-tight ${task.is_completed ? 'line-through text-gray-500' : 'text-gray-300'}`}>{task.description}</p>
                             </div>
                         ))}
-                        {dayTasks.length > 3 && <p className="text-gray-500 mt-1 text-[9px] sm:text-xs">+{dayTasks.length - 3} mais</p>}
+                        {dayTasks.length > 3 && <p className="text-gray-500 mt-1 text-xs">+{dayTasks.length - 3} mais</p>}
                     </div>
                 </div>
             );
@@ -358,7 +358,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                     </svg>
                 </div>
                 <div className={`transition-all duration-500 ease-in-out overflow-hidden ${activeSection === 'calendar' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <div className="flex flex-col flex-1 h-full border border-t-0 border-gray-700/50 rounded-b-lg p-4">
+                    <div className="flex flex-col flex-1 border border-t-0 border-gray-700/50 rounded-b-lg p-4 overflow-y-auto">
                         <div className="mb-4 space-y-2">
                             <GoogleCalendarAuth onAuthChange={setIsCalendarAuthenticated} />
                             {isCalendarAuthenticated && (
@@ -416,13 +416,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                                 </button>
                             </div>
                         </div>
-                        <div className="grid grid-cols-7 text-center text-[10px] sm:text-xs font-semibold text-gray-400 border-b border-gray-700/50">
-                            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                                <div key={day} className="py-2 border-r border-gray-700/50 last:border-r-0">{day}</div>
-                            ))}
-                        </div>
-                        <div className="grid grid-cols-7">
-                            {renderCalendar()}
+                        <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700/50">
+                            <div className="grid grid-cols-7 text-center text-xs font-semibold text-gray-400 bg-gray-900/50">
+                                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                                    <div key={day} className="py-3 border-r border-gray-700/50 last:border-r-0">{day}</div>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-7 bg-gray-800/50">
+                                {renderCalendar()}
+                            </div>
                         </div>
                     </div>
                 </div>
