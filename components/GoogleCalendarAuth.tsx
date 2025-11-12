@@ -29,9 +29,15 @@ export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthCh
             .maybeSingle();
 
           if (tokenData?.access_token) {
-            setCalendarToken(tokenData.access_token);
-            setIsAuthenticated(true);
-            onAuthChange(true);
+            try {
+              setCalendarToken(tokenData.access_token);
+              setIsAuthenticated(true);
+              onAuthChange(true);
+            } catch (tokenError) {
+              console.error('Error setting calendar token:', tokenError);
+              setIsAuthenticated(false);
+              onAuthChange(false);
+            }
           } else {
             const signedIn = isSignedIn();
             setIsAuthenticated(signedIn);
@@ -44,7 +50,9 @@ export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthCh
         }
       } catch (err) {
         console.error('Error initializing Google Calendar:', err);
-        setError('Erro ao inicializar Google Calendar');
+        setError('Google Calendar não disponível no momento');
+        setIsAuthenticated(false);
+        onAuthChange(false);
       } finally {
         setIsLoading(false);
       }

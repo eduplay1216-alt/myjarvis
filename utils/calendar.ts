@@ -1,6 +1,7 @@
 import { gapi } from 'gapi-script';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'];
 
@@ -14,11 +15,25 @@ export const initGoogleCalendar = (): Promise<void> => {
       return;
     }
 
+    if (typeof gapi === 'undefined') {
+      reject(new Error('GAPI not loaded'));
+      return;
+    }
+
     gapi.load('client', async () => {
       try {
-        await gapi.client.init({
+        const initConfig: any = {
           discoveryDocs: DISCOVERY_DOCS,
-        });
+        };
+
+        if (API_KEY) {
+          initConfig.apiKey = API_KEY;
+        }
+
+        await gapi.client.init(initConfig);
+
+        await gapi.client.load('calendar', 'v3');
+
         gapiInited = true;
 
         if ((window as any).google?.accounts?.oauth2) {
@@ -31,6 +46,8 @@ export const initGoogleCalendar = (): Promise<void> => {
 
         resolve();
       } catch (error) {
+        console.error('Error initializing Google Calendar:', error);
+        gapiInited = false;
         reject(error);
       }
     });
@@ -100,6 +117,10 @@ export const createCalendarEvent = async (
   startTime: Date,
   durationMinutes: number
 ): Promise<any> => {
+  if (!gapi?.client?.calendar) {
+    throw new Error('Google Calendar API not initialized');
+  }
+
   const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
 
   const event: CalendarEvent = {
@@ -134,6 +155,10 @@ export const updateCalendarEvent = async (
   startTime: Date,
   durationMinutes: number
 ): Promise<any> => {
+  if (!gapi?.client?.calendar) {
+    throw new Error('Google Calendar API not initialized');
+  }
+
   const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
 
   const event: CalendarEvent = {
@@ -163,6 +188,10 @@ export const updateCalendarEvent = async (
 };
 
 export const deleteCalendarEvent = async (eventId: string): Promise<void> => {
+  if (!gapi?.client?.calendar) {
+    throw new Error('Google Calendar API not initialized');
+  }
+
   try {
     await gapi.client.calendar.events.delete({
       calendarId: 'primary',
@@ -178,6 +207,10 @@ export const getCalendarEvents = async (
   timeMin: Date,
   timeMax: Date
 ): Promise<any[]> => {
+  if (!gapi?.client?.calendar) {
+    throw new Error('Google Calendar API not initialized');
+  }
+
   try {
     const response = await gapi.client.calendar.events.list({
       calendarId: 'primary',
