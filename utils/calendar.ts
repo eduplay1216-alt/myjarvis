@@ -259,10 +259,19 @@ export const getCalendarEvents = async (
   }
 };
 
+// Em utils/calendar.ts
+
 export const syncAllEvents = async (
   localTasks: any[],
   onProgress?: (message: string) => void
-): Promise<{ synced: number; created: number; updated: number; deleted: number }> => {
+): Promise<{ 
+  synced: number; 
+  created: number; 
+  updated: number; 
+  deleted: number; 
+  // ADICIONE ESTA LINHA: Nós retornaremos os IDs para o App.tsx
+  updates: { taskId: number; newEventId: string }[]; 
+}> => {
   try {
     const now = new Date();
     const sixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
@@ -275,9 +284,11 @@ export const syncAllEvents = async (
     let created = 0;
     let updated = 0;
     let deleted = 0;
+    // ADICIONE ESTA LINHA: Array para armazenar as atualizações pendentes
+    const tasksToUpdate: { taskId: number; newEventId: string }[] = [];
 
     const calendarEventIds = new Set(calendarEvents.map(e => e.id));
-    const localTasksWithDates = localTasks.filter(t => t.due_at);
+    const localTasksWithDates = localTasks.filter(t => t.due_at && t.id); // Garante que temos um ID
 
     for (const task of localTasksWithDates) {
       if (task.google_calendar_event_id && calendarEventIds.has(task.google_calendar_event_id)) {
@@ -298,6 +309,10 @@ export const syncAllEvents = async (
           new Date(task.due_at),
           task.duration || 60
         );
+        
+        // ADICIONE ESTA LINHA: Salva a atualização pendente
+        tasksToUpdate.push({ taskId: task.id, newEventId: event.id });
+        
         created++;
         synced++;
       } else {
@@ -320,7 +335,8 @@ export const syncAllEvents = async (
     }
 
     onProgress?.('Sincronização completa!');
-    return { synced, created, updated, deleted };
+    // ATUALIZE A LINHA DE RETORNO:
+    return { synced, created, updated, deleted, updates: tasksToUpdate };
   } catch (error) {
     console.error('Error syncing all events:', error);
     throw error;
