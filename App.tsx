@@ -459,20 +459,30 @@ const App: React.FC = () => {
     }
   };
 
+  // Em App.tsx
+
   const handleSyncAllToCalendar = async () => {
     try {
+      // 1. Chama a função de sincronização, que agora retorna as atualizações
       const result = await syncAllEvents(tasks);
 
-      const updatedTasks = await supabase
-        .from('tasks')
-        .select('*')
-        .order('due_at', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: false });
-
-      if (updatedTasks.data) {
-        setTasks(updatedTasks.data);
+      // 2. ATUALIZAÇÃO IMPORTANTE: Aplica as atualizações pendentes no Supabase
+      if (result.updates.length > 0) {
+        // Mapeia todas as promessas de atualização
+        const updatePromises = result.updates.map(update =>
+          supabase
+            .from('tasks')
+            .update({ google_calendar_event_id: update.newEventId })
+            .eq('id', update.taskId)
+        );
+        // Espera todas as atualizações terminarem
+        await Promise.all(updatePromises);
       }
 
+      // 3. CORREÇÃO: Usa a função refreshDashboardData() para recarregar o estado
+      await refreshDashboardData();
+
+      // 4. Mostra a mensagem de sucesso (agora usa 'result.created' e não 'result.created.count')
       const totalActions = result.created + result.updated + result.deleted;
       const message = totalActions > 0
         ? `Sincronização completa! ${result.created} criado(s), ${result.updated} atualizado(s), ${result.deleted} removido(s).`
