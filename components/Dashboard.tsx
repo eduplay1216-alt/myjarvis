@@ -285,7 +285,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
 
         const cells = [];
         for (let i = 0; i < firstDayOfMonth; i++) {
-            cells.push(<div key={`empty-start-${i}`} className="border-r border-b border-gray-700/50"></div>);
+            cells.push(<div key={`empty-start-${i}`} className="border-r border-b border-gray-200 bg-gray-50 min-h-[120px]"></div>);
         }
 
         const today = new Date();
@@ -297,22 +297,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
             
             const isToday = dateKey === todayKey;
             const cellClasses = `
-                border-r border-b border-gray-700/50 p-2 flex flex-col min-h-[100px]
-                transition-colors duration-200 cursor-pointer hover:bg-gray-700/50
-                ${isToday ? 'bg-blue-900/30' : ''}
+                border-r border-b border-gray-200 p-2 flex flex-col min-h-[120px] bg-white
+                transition-colors duration-150 cursor-pointer hover:bg-gray-50
+                ${isToday ? 'bg-blue-50' : ''}
             `;
 
             cells.push(
                 <div key={day} className={cellClasses} onClick={() => handleDayClick(day)}>
-                    <span className={`text-sm font-medium ${isToday ? 'text-blue-300' : 'text-gray-300'}`}>{day}</span>
-                    <div className="mt-1 flex-1 overflow-y-auto text-xs space-y-0.5">
-                        {dayTasks.slice(0, 3).map(task => (
-                            <div key={task.id} className="flex items-center">
-                                <div className={`flex-shrink-0 w-1.5 h-1.5 rounded-full mr-1.5 ${task.is_completed ? 'bg-gray-500' : 'bg-blue-400'}`}></div>
-                                <p className={`truncate leading-tight ${task.is_completed ? 'line-through text-gray-500' : 'text-gray-300'}`}>{task.description}</p>
-                            </div>
-                        ))}
-                        {dayTasks.length > 3 && <p className="text-gray-500 mt-1 text-xs">+{dayTasks.length - 3} mais</p>}
+                    <div className="flex items-center justify-center w-8 h-8 mb-1">
+                        <span className={`text-sm font-medium ${isToday ? 'bg-blue-600 text-white rounded-full w-7 h-7 flex items-center justify-center' : 'text-gray-900'}`}>{day}</span>
+                    </div>
+                    <div className="flex-1 overflow-y-auto space-y-1">
+                        {dayTasks.slice(0, 3).map(task => {
+                            const taskTime = task.due_at ? new Date(task.due_at) : null;
+                            const timeStr = taskTime ? `${String(taskTime.getHours()).padStart(2, '0')}:${String(taskTime.getMinutes()).padStart(2, '0')}` : '';
+                            return (
+                                <div
+                                    key={task.id}
+                                    className={`text-xs px-2 py-1 rounded ${task.is_completed ? 'bg-gray-200 text-gray-600 line-through' : 'bg-blue-100 text-blue-900 hover:bg-blue-200'} truncate`}
+                                    title={task.description}
+                                >
+                                    {timeStr && <span className="font-medium">{timeStr} </span>}
+                                    {task.description}
+                                </div>
+                            );
+                        })}
+                        {dayTasks.length > 3 && <p className="text-xs text-gray-500 px-2">+{dayTasks.length - 3} mais</p>}
                     </div>
                 </div>
             );
@@ -358,18 +368,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                     </svg>
                 </div>
                 <div className={`transition-all duration-500 ease-in-out overflow-hidden ${activeSection === 'calendar' ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <div className="flex flex-col flex-1 border border-t-0 border-gray-700/50 rounded-b-lg p-4 overflow-y-auto">
-                        <div className="mb-4 space-y-2">
+                    <div className="flex flex-col flex-1 border border-t-0 border-gray-700/50 rounded-b-lg bg-white">
+                        <div className="p-4 border-b border-gray-200">
                             <GoogleCalendarAuth onAuthChange={setIsCalendarAuthenticated} />
                             {isCalendarAuthenticated && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
                                     {onSyncFromCalendar && (
                                         <button
                                             onClick={onSyncFromCalendar}
                                             disabled={isSyncing}
-                                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors text-sm flex items-center justify-center space-x-2"
+                                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md transition-colors text-sm flex items-center justify-center space-x-2"
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                             </svg>
                                             <span>Importar do Google</span>
@@ -383,16 +393,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                                                 setIsSyncing(false);
                                             }}
                                             disabled={isSyncing}
-                                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors text-sm flex items-center justify-center space-x-2"
+                                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md transition-colors text-sm flex items-center justify-center space-x-2"
                                         >
                                             {isSyncing ? (
                                                 <>
-                                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                                     <span>Sincronizando...</span>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                                     </svg>
                                                     <span>Sincronizar Tudo</span>
@@ -403,26 +413,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                                 </div>
                             )}
                         </div>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-gray-200">
-                                {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(currentDate)}
-                            </h3>
-                            <div className="flex space-x-2">
-                                <button onClick={handlePrevMonth} className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors">
-                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+
+                        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200">
+                            <div className="flex items-center space-x-4">
+                                <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                                 </button>
-                                <button onClick={handleNextMonth} className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                <button onClick={handleNextMonth} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                                 </button>
+                                <h3 className="text-xl font-normal text-gray-900">
+                                    {new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(currentDate)}
+                                </h3>
                             </div>
                         </div>
-                        <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700/50">
-                            <div className="grid grid-cols-7 text-center text-xs font-semibold text-gray-400 bg-gray-900/50">
+
+                        <div className="flex-1 overflow-auto">
+                            <div className="grid grid-cols-7 border-b border-gray-200 bg-white sticky top-0 z-10">
                                 {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                                    <div key={day} className="py-3 border-r border-gray-700/50 last:border-r-0">{day}</div>
+                                    <div key={day} className="py-2 text-center text-xs font-medium text-gray-600 border-r border-gray-200 last:border-r-0">{day}</div>
                                 ))}
                             </div>
-                            <div className="grid grid-cols-7 bg-gray-800/50">
+                            <div className="grid grid-cols-7">
                                 {renderCalendar()}
                             </div>
                         </div>
