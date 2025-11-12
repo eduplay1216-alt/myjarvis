@@ -277,47 +277,129 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
         setSelectedDate(clickedDate);
     };
 
-    const renderCalendar = () => {
+    const getWeekDays = () => {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        const firstDayOfMonth = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
 
-        const cells = [];
-        for (let i = 0; i < firstDayOfMonth; i++) {
-            cells.push(<div key={`empty-start-${i}`} className="border-r border-b border-gray-700/50"></div>);
+        const days = [];
+        for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+            days.push(new Date(d));
         }
+        return days;
+    };
 
+    const renderCalendar = () => {
+        const days = getWeekDays();
         const today = new Date();
         const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-        
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const dayTasks = tasksByDate.get(dateKey) || [];
-            
-            const isToday = dateKey === todayKey;
-            const cellClasses = `
-                border-r border-b border-gray-700/50 p-2 flex flex-col min-h-[100px]
-                transition-colors duration-200 cursor-pointer hover:bg-gray-700/50
-                ${isToday ? 'bg-blue-900/30' : ''}
-            `;
 
-            cells.push(
-                <div key={day} className={cellClasses} onClick={() => handleDayClick(day)}>
-                    <span className={`text-sm font-medium ${isToday ? 'text-blue-300' : 'text-gray-300'}`}>{day}</span>
-                    <div className="mt-1 flex-1 overflow-y-auto text-xs space-y-0.5">
-                        {dayTasks.slice(0, 3).map(task => (
-                            <div key={task.id} className="flex items-center">
-                                <div className={`flex-shrink-0 w-1.5 h-1.5 rounded-full mr-1.5 ${task.is_completed ? 'bg-gray-500' : 'bg-blue-400'}`}></div>
-                                <p className={`truncate leading-tight ${task.is_completed ? 'line-through text-gray-500' : 'text-gray-300'}`}>{task.description}</p>
+        return days.map(date => {
+            const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            const dayTasks = tasksByDate.get(dateKey) || [];
+            const isToday = dateKey === todayKey;
+
+            const dayName = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(date);
+            const dayNumber = date.getDate();
+
+            const { timedTasks, allDayTasks } = dayTasks.reduce((acc, task) => {
+                if (task.due_at) {
+                    acc.timedTasks.push(task);
+                } else {
+                    acc.allDayTasks.push(task);
+                }
+                return acc;
+            }, { timedTasks: [] as Task[], allDayTasks: [] as Task[] });
+
+            const renderTaskBlock = (task: Task) => {
+                const time = task.due_at ? new Date(task.due_at) : null;
+                const timeStr = time ? `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}` : '';
+                const duration = task.duration || 60;
+                const endTime = time ? new Date(time.getTime() + duration * 60000) : null;
+                const endTimeStr = endTime ? ` - ${String(endTime.getHours()).padStart(2, '0')}:${String(endTime.getMinutes()).padStart(2, '0')}` : '';
+
+                return (
+                    <div
+                        key={task.id}
+                        onClick={() => handleDayClick(date.getDate())}
+                        className={`p-2 rounded-md mb-1 cursor-pointer transition-all hover:shadow-lg ${
+                            task.is_completed
+                                ? 'bg-gray-600/60 border-l-4 border-gray-400'
+                                : 'bg-blue-600/80 border-l-4 border-blue-400'
+                        }`}
+                    >
+                        <p className={`text-xs font-medium truncate ${task.is_completed ? 'line-through text-gray-300' : 'text-white'}`}>
+                            {task.description}
+                        </p>
+                        {time && (
+                            <p className={`text-xs mt-0.5 ${task.is_completed ? 'text-gray-400' : 'text-blue-200'}`}>
+                                {timeStr}{endTimeStr}
+                            </p>
+                        )}
+                    </div>
+                );
+            };
+
+            return (
+                <div
+                    key={dateKey}
+                    className={`border-b border-gray-700/50 hover:bg-gray-700/20 transition-colors ${
+                        isToday ? 'bg-blue-900/20' : ''
+                    }`}
+                >
+                    <div className="flex">
+                        <div className={`w-16 flex-shrink-0 p-3 text-center border-r border-gray-700/50 ${
+                            isToday ? 'bg-blue-900/30' : ''
+                        }`}>
+                            <div className="text-xs text-gray-400 uppercase">{dayName}</div>
+                            <div className={`text-2xl font-bold mt-1 ${
+                                isToday ? 'bg-blue-600 text-white rounded-full w-10 h-10 mx-auto flex items-center justify-center' : 'text-gray-200'
+                            }`}>
+                                {dayNumber}
                             </div>
-                        ))}
-                        {dayTasks.length > 3 && <p className="text-gray-500 mt-1 text-xs">+{dayTasks.length - 3} mais</p>}
+                        </div>
+                        <div className="flex-1 p-3 min-h-[80px]">
+                            {allDayTasks.length > 0 && (
+                                <div className="mb-2">
+                                    {allDayTasks.map(task => (
+                                        <div
+                                            key={task.id}
+                                            onClick={() => handleDayClick(date.getDate())}
+                                            className={`p-2 rounded-md mb-1 cursor-pointer transition-all hover:shadow-lg ${
+                                                task.is_completed
+                                                    ? 'bg-teal-700/60 border-l-4 border-teal-400'
+                                                    : 'bg-teal-600/80 border-l-4 border-teal-400'
+                                            }`}
+                                        >
+                                            <p className={`text-xs font-medium truncate ${task.is_completed ? 'line-through text-gray-300' : 'text-white'}`}>
+                                                {task.description}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {timedTasks.length > 0 && (
+                                <div>
+                                    {timedTasks.slice(0, 3).map(renderTaskBlock)}
+                                    {timedTasks.length > 3 && (
+                                        <button
+                                            onClick={() => handleDayClick(date.getDate())}
+                                            className="text-xs text-gray-400 hover:text-gray-200 mt-1"
+                                        >
+                                            +{timedTasks.length - 3} mais
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                            {dayTasks.length === 0 && (
+                                <div className="text-gray-600 text-xs italic"></div>
+                            )}
+                        </div>
                     </div>
                 </div>
             );
-        }
-        return cells;
+        });
     };
 
     return (
@@ -417,12 +499,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, tasks, onUpd
                             </div>
                         </div>
                         <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700/50">
-                            <div className="grid grid-cols-7 text-center text-xs font-semibold text-gray-400 bg-gray-900/50">
-                                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                                    <div key={day} className="py-3 border-r border-gray-700/50 last:border-r-0">{day}</div>
-                                ))}
-                            </div>
-                            <div className="grid grid-cols-7 bg-gray-800/50">
+                            <div className="overflow-y-auto max-h-[600px]">
                                 {renderCalendar()}
                             </div>
                         </div>
