@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { Transaction, Task } from '../../types';
-import { supabase } from '../services/supabaseClient';
+import { supabase } from './src/services/supabaseClient';
 import { createCalendarEvent, getCalendarEvents, syncAllEvents } from '../../utils/calendar';
 
 export function useDatabase() {
