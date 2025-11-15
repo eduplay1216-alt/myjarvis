@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase } from './src/services/supabaseClient';
 
 export const Auth: React.FC = () => {
     const [isSignUp, setIsSignUp] = useState(false);
