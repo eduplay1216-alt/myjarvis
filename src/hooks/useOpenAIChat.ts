@@ -70,22 +70,26 @@ export function useOpenAIChat(userId: string | undefined, onNewToolCall: () => P
                 { role: 'user', content: inputText }
             ];
 
-            const response = await fetch('/api/chat', {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
                 },
                 body: JSON.stringify({
+                    model: 'gpt-4o-mini',
                     messages: openaiMessages
                 })
             });
 
             if (!response.ok) {
+                const errorData = await response.json();
+                console.error('OpenAI error:', errorData);
                 throw new Error(`API error: ${response.status}`);
             }
 
             const data = await response.json();
-            const finalResponse = data.reply || '';
+            const finalResponse = data.choices?.[0]?.message?.content || '';
 
             setMessages(prev => {
                 const newMessages = [...prev];
