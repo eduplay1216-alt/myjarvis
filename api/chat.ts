@@ -1,23 +1,29 @@
-export async function sendMessageToGPT(messages: any[]) {
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const res = await fetch("/api/chat", {
+    const { messages } = req.body;
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: { 
-        "Content-Type": "application/json"
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       },
-      body: JSON.stringify({ messages })
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages,
+      }),
     });
 
-    if (!res.ok) {
-      console.error("Erro HTTP:", res.status, await res.text());
-      throw new Error("Erro na requisição");
-    }
+    const data = await response.json();
 
-    const data = await res.json();
-    return data.reply;
+    return res.status(200).json({
+      reply: data.choices?.[0]?.message?.content ?? null
+    });
 
-  } catch (err) {
-    console.error("ERRO FRONTEND:", err);
-    return "Erro ao conectar ao servidor.";
+  } catch (error) {
+    console.error("API ERROR:", error);
+    return res.status(500).json({ error: "Erro interno ao chamar OpenAI" });
   }
 }
