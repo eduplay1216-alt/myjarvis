@@ -181,7 +181,7 @@ export function useAudioRecording(handleSendMessage: (text: string) => Promise<v
             const textPart = { text: "Transcreva este áudio. Responda APENAS com o texto transcrito." };
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-pro',
+                model: 'gemini-2.0-flash-lite',
                 contents: [{ parts: [audioPart, textPart] }],
             });
 
