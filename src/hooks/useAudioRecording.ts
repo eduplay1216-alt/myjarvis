@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
 import type { LiveServerMessage, Blob } from '@google/genai';
 import type { Message } from '../../types';
-import { supabase } from '../services/supabaseClient';
+import { supabase } from './src/services/supabaseClient';
 import { createBlob, decode, decodeAudioData } from '../../utils/audio';
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
