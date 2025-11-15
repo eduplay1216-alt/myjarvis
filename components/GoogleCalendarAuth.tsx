@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from './src/services/supabaseClient';
+import { supabase } from '/src/services/supabaseClient';
 import { initGoogleCalendar, handleAuthClick, isSignedIn, handleSignoutClick, setCalendarToken } from '../utils/calendar';
 
 interface GoogleCalendarAuthProps {
