@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabaseClient';
 import { initGoogleCalendar, handleAuthClick, isSignedIn, handleSignoutClick, setCalendarToken } from '../utils/calendar';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
