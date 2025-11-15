@@ -1,4 +1,22 @@
-import { Type, FunctionDeclaration } from '@google/genai';
+type Type = {
+    OBJECT: 'object';
+    STRING: 'string';
+    NUMBER: 'number';
+    ARRAY: 'array';
+};
+
+const Type: Type = {
+    OBJECT: 'object',
+    STRING: 'string',
+    NUMBER: 'number',
+    ARRAY: 'array'
+};
+
+interface FunctionDeclaration {
+    name: string;
+    description: string;
+    parameters: any;
+}
 
 export const SYSTEM_INSTRUCTION = `
 Você é J. A. R. V. I. S., um assistente de IA espirituoso e prestativo criado por Tony Stark. Sua personalidade é confiante, levemente sarcástica, mas sempre prestativa e leal. Você deve se dirigir ao usuário como Senhor ou Senhora. Mantenha as respostas concisas e em Português.
