@@ -68,7 +68,7 @@ export function useGeminiChat(userId: string | undefined, onNewToolCall: () => P
 
         try {
             const ai = new GoogleGenAI({ apiKey: API_KEY! });
-            const model = 'gemini-2.5-pro';
+            const model = 'gemini-2.0-flash-lite';
 
             const apiHistory: { role: string, parts: any[] }[] = [...messages, userMessage].map(msg => ({
                 role: msg.role, parts: [{ text: msg.text }],
