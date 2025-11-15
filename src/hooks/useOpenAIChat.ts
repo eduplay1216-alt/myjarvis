@@ -70,14 +70,15 @@ export function useOpenAIChat(userId: string | undefined, onNewToolCall: () => P
                 { role: 'user', content: inputText }
             ];
 
-            const res = await fetch("/api/chat", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-      { role: "user", content: userText }
-    ]
-  }),
-});
-
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    messages: openaiMessages
+                })
+            });
 
             if (!response.ok) {
                 throw new Error(`API error: ${response.status}`);
