@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabaseClient';
 
 // These should be in a central config, but for this component we can redefine them
 const SUPABASE_URL = "https://xshwoyexbpbnnyljizfj.supabase.co";
