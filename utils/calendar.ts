@@ -1419,7 +1419,42 @@ export const syncAllEvents = async (
 
 
   }
-
-
-
 };
+// utils/calendar.ts
+
+// ... (imports e constantes inalteradas) ...
+
+// **PASSO CRÍTICO: Configure sua URL de redirecionamento do Google Cloud aqui!**
+// Esta URL deve ser o endereço do seu backend ou Edge Function que fará a troca do código.
+const REDIRECT_URI = 'SUA_URL_DE_REDIRECIONAMENTO_DO_SUPABASE'; 
+
+let gapiInited = false;
+let codeClient: any = null; // Renomeado para codeClient
+
+export const initGoogleCalendar = (): Promise<void> => {
+    // ... (parte de inicialização gapi.load('client', ... ) inalterada) ...
+
+    gapi.load('client', async () => {
+        try {
+            await gapi.client.init({});
+            gapiInited = true;
+
+            if ((window as any).google?.accounts?.oauth2) {
+                // ALTERAÇÃO: Usando initCodeClient para obter o Refresh Token
+                codeClient = (window as any).google.accounts.oauth2.initCodeClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    // O redirect_uri deve ser registrado no Google Cloud
+                    redirect_uri: REDIRECT_URI, 
+                    ux_mode: 'popup', // Usa um popup para o fluxo de autenticação
+                });
+            }
+
+            resolve();
+        } catch (error) {
+            // ... (tratamento de erro inalterado) ...
+        }
+    });
+};
+
+// ...
