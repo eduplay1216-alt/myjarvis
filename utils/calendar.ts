@@ -2,7 +2,7 @@ import { gapi } from 'gapi-script';
 
 // ⚠️ ATENÇÃO: SUBSTITUA ESTE VALOR PELA URL DO SEU ENDPOINT DE BACKEND/EDGE FUNCTION
 // Esta URL deve ser registrada como "Authorized redirect URI" no seu projeto do Google Cloud.
-const REDIRECT_URI = 'SUA_URL_DE_REDIRECIONAMENTO_DO_BACKEND'; 
+const REDIRECT_URI = 'https://xshwoyexbpbnnyljizfj.supabase.co/functions/v1/bright-endpoint'; 
 
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
