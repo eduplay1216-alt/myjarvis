@@ -6,18 +6,21 @@ interface GoogleCalendarAuthProps {
     onAuthChange: (isAuthenticated: boolean) => void;
 }
 
-// ⚠️ SUBSTITUA PELA SUA URL DE BACKEND/EDGE FUNCTION
-// Esta é a URL: https://xshwoyexbpbnnyjjizfj.supabase.co/functions/v1/bright-endpoint
+// ⚠️ URL DA SUA EDGE FUNCTION
 const ENDPOINT_URL = 'https://xshwoyexbpbnnyljizfj.supabase.co/functions/v1/bright-endpoint';
 
 /**
  * Função auxiliar para enviar o código de autorização para o backend para obter os tokens.
+ * AGORA INCLUI O TOKEN DE AUTENTICAÇÃO DO SUPABASE.
  */
-const exchangeCodeForTokens = async (code: string, userId: string): Promise<string> => {
+const exchangeCodeForTokens = async (code: string, userId: string, supabaseToken: string): Promise<string> => {
+    
     const response = await fetch(ENDPOINT_URL, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            // ✨ CORREÇÃO: Envia o token de sessão do Supabase para a Edge Function
+            'Authorization': `Bearer ${supabaseToken}` 
         },
         // Envia o código e o ID do usuário para o backend
         body: JSON.stringify({ code, userId }),
@@ -25,13 +28,14 @@ const exchangeCodeForTokens = async (code: string, userId: string): Promise<stri
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error during token exchange' }));
-        throw new Error(`Falha ao trocar código por tokens: ${errorData.error || response.statusText}`);
+        // Tenta extrair a mensagem de erro detalhada do Google
+        const details = errorData.details ? (errorData.details.error_description || errorData.details.error) : errorData.error;
+        throw new Error(`Falha ao trocar código por tokens: ${details || response.statusText}`);
     }
 
-    // O backend deve retornar o Access Token no corpo da resposta
     const data = await response.json();
     if (!data.accessToken) {
-        throw new Error("Backend didn't return an accessToken.");
+        throw new Error("O backend não retornou um accessToken.");
     }
     return data.accessToken;
 };
@@ -41,16 +45,14 @@ export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthCh
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // --- LÓGICA DE INICIALIZAÇÃO (INALTERADA, EXCETO PELA LIMPEZA) ---
+    // --- LÓGICA DE INICIALIZAÇÃO (Verifica se já existe token) ---
     useEffect(() => {
         const initCalendar = async () => {
             try {
                 await initGoogleCalendar();
-
                 const { data: { session } } = await supabase.auth.getSession();
 
                 if (session?.user?.id) {
-                    // Busca o Access Token (e Refresh Token, se presente) do Supabase
                     const { data: tokenData } = await supabase
                         .from('google_calendar_tokens')
                         .select('*')
@@ -69,14 +71,13 @@ export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthCh
                             onAuthChange(false);
                         }
                     } else {
-                        const signedIn = isSignedIn();
-                        setIsAuthenticated(signedIn);
-                        onAuthChange(signedIn);
+                        // Limpa se não houver token no DB
+                        setIsAuthenticated(false);
+                        onAuthChange(false);
                     }
                 } else {
-                    const signedIn = isSignedIn();
-                    setIsAuthenticated(signedIn);
-                    onAuthChange(signedIn);
+                    setIsAuthenticated(false);
+                    onAuthChange(false);
                 }
             } catch (err) {
                 console.error('Error initializing Google Calendar:', err);
@@ -91,56 +92,54 @@ export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthCh
         initCalendar();
     }, [onAuthChange]);
 
-    // --- LÓGICA DE LOGIN (CORRIGIDA PARA FLUXO DE CÓDIGO) ---
+    // --- LÓGICA DE LOGIN (CORRIGIDA PARA ENVIAR O TOKEN) ---
     const handleSignIn = async () => {
         try {
             setIsLoading(true);
             setError(null);
 
-            // 1. Inicia o fluxo de autorização e obtém o CÓDIGO
+            // 1. Inicia o fluxo de autorização do Google e obtém o CÓDIGO
             const authResponse = await handleAuthClick(); 
             
-            // Verifica se o Google retornou um erro (ex: usuário cancelou)
             if (authResponse.error) {
-                 throw new Error(`Google Auth Error: ${authResponse.error}`);
+                 throw new Error(`Erro do Google: ${authResponse.error}`);
             }
 
+            // 2. Obtém a sessão ATUAL do Supabase (para pegar o token de acesso)
             const { data: { session } } = await supabase.auth.getSession();
             
-            if (session?.user?.id && authResponse.code) {
-                // 2. Envia o CÓDIGO para o backend para troca por tokens (Access/Refresh)
-                const accessToken = await exchangeCodeForTokens(authResponse.code, session.user.id);
+            if (session?.user?.id && authResponse.code && session.access_token) {
+                // 3. Envia o CÓDIGO (do Google) e o TOKEN (do Supabase) para o backend
+                const accessToken = await exchangeCodeForTokens(
+                    authResponse.code, 
+                    session.user.id, 
+                    session.access_token // ✨ CORREÇÃO: Passa o token do Supabase
+                );
                 
-                // 3. Define o Access Token no gapi para uso imediato
+                // 4. Define o Access Token do Google no gapi para uso imediato
                 setCalendarToken(accessToken);
-
-                // O Refresh Token foi salvo no Supabase pela Edge Function
             } else {
-                // Se o código não veio, algo falhou no Google
-                throw new Error("Não foi possível obter o código de autorização do Google.");
+                // Se o código não veio ou a sessão do Supabase falhou
+                throw new Error("Não foi possível obter a sessão do Supabase ou o código de autorização do Google.");
             }
 
             setIsAuthenticated(true);
             onAuthChange(true);
         } catch (err) {
             console.error('Error signing in:', err);
-            // Mostrar mensagem mais útil
-            setError(`Erro ao fazer login no Google Calendar: ${err instanceof Error ? err.message : String(err)}`);
+            setError(`Erro ao fazer login: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
             setIsLoading(false);
         }
     };
 
-    // --- LÓGICA DE LOGOUT (Simplificada e Segura) ---
+    // --- LÓGICA DE LOGOUT (Simplificada) ---
     const handleSignOut = async () => {
-        // 1. Revoga o token no Google e limpa o gapi localmente
-        handleSignoutClick(); 
-
+        handleSignoutClick(); // Limpa o GAPI
         const { data: { session } } = await supabase.auth.getSession();
+        
         if (session?.user?.id) {
-            // 2. Deleta a entrada do usuário no Supabase
-            // Como agora temos o Refresh Token, podemos criar uma função de backend
-            // para revogar o Refresh Token com segurança aqui.
+            // Deleta os tokens do banco
             await supabase
                 .from('google_calendar_tokens')
                 .delete()
