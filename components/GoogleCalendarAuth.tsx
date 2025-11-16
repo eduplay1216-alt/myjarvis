@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../scr/services/supabaseClient";
+import { supabase } from "../scr/services/supabaseClient.ts";
 
 export default function GoogleCalendarAuth() {
   const [loading, setLoading] = useState(true);
