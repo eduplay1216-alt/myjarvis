@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+import { supabase } from '/src/services/supabaseClient';
 import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCalendarEvents } from '../../utils/calendar';
 
 export function createApiTools(userId: string) {

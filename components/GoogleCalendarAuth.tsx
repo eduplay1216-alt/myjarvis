@@ -1,0 +1,157 @@
+import React, { useEffect, useState } from 'react';
+import { supabase } from '/src/services/supabaseClient';
+import { initGoogleCalendar, handleAuthClick, isSignedIn, handleSignoutClick, setCalendarToken } from '../utils/calendar';
+
+interface GoogleCalendarAuthProps {
+  onAuthChange: (isAuthenticated: boolean) => void;
+}
+
+export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthChange }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initCalendar = async () => {
+      try {
+        await initGoogleCalendar();
+
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user?.id) {
+          const { data: tokenData } = await supabase
+            .from('google_calendar_tokens')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .maybeSingle();
+
+          if (tokenData?.access_token) {
+            try {
+              setCalendarToken(tokenData.access_token);
+              setIsAuthenticated(true);
+              onAuthChange(true);
+            } catch (tokenError) {
+              console.error('Error setting calendar token:', tokenError);
+              setIsAuthenticated(false);
+              onAuthChange(false);
+            }
+          } else {
+            const signedIn = isSignedIn();
+            setIsAuthenticated(signedIn);
+            onAuthChange(signedIn);
+          }
+        } else {
+          const signedIn = isSignedIn();
+          setIsAuthenticated(signedIn);
+          onAuthChange(signedIn);
+        }
+      } catch (err) {
+        console.error('Error initializing Google Calendar:', err);
+        setError('Google Calendar não disponível no momento');
+        setIsAuthenticated(false);
+        onAuthChange(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initCalendar();
+  }, [onAuthChange]);
+
+  const handleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      await handleAuthClick();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const token = (window as any).gapi?.client?.getToken()?.access_token;
+        if (token) {
+          await supabase.from('google_calendar_tokens').upsert({
+            user_id: session.user.id,
+            access_token: token,
+            expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      setIsAuthenticated(true);
+      onAuthChange(true);
+    } catch (err) {
+      console.error('Error signing in:', err);
+      setError('Erro ao fazer login no Google Calendar');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    handleSignoutClick();
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      await supabase
+        .from('google_calendar_tokens')
+        .delete()
+        .eq('user_id', session.user.id);
+    }
+
+    setIsAuthenticated(false);
+    onAuthChange(false);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center space-x-2 text-gray-400 text-sm">
+        <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+        <span>Carregando Google Calendar...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {error && (
+        <div className="bg-red-900/50 border border-red-700 text-red-300 p-2 rounded text-sm">
+          {error}
+        </div>
+      )}
+
+      {isAuthenticated ? (
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 text-green-400 text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <span>Conectado ao Google Calendar</span>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded transition-colors"
+          >
+            Desconectar
+          </button>
+        </div>
+      ) : (
+        <button
+  onClick={handleSignIn}
+  className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+    <path
+      fillRule="evenodd"
+      d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+      clipRule="evenodd"
+    />
+  </svg>
+
+  <span>Conectar ao Google Calendar</span>
+</button>
+
+      )}
+    </div>
+  );
+};
