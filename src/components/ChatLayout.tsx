@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Dashboard } from '../Dashboard';
+import { Dashboard } from '../componets/Dashboard';
 import { ChatMessage } from '../../components/ChatMessage';
 import { ChatInput } from '../../components/ChatInput';
 import { supabase } from '/src/services/supabaseClient';
