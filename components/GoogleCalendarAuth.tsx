@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '/src/services/supabaseClient';
-import { initGoogleCalendar, handleAuthClick, isSignedIn, handleSignoutClick, setCalendarToken } from '../utils/calendar';
+import { checkCalendarAuth, getCalendarAuthUrl, logoutCalendar, exchangeCodeForToken } from '../utils/calendarBackend';
 
 interface GoogleCalendarAuthProps {
   onAuthChange: (isAuthenticated: boolean) => void;
@@ -14,37 +13,24 @@ export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthCh
   useEffect(() => {
     const initCalendar = async () => {
       try {
-        await initGoogleCalendar();
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
 
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (session?.user?.id) {
-          const { data: tokenData } = await supabase
-            .from('google_calendar_tokens')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
-
-          if (tokenData?.access_token) {
-            try {
-              setCalendarToken(tokenData.access_token);
-              setIsAuthenticated(true);
-              onAuthChange(true);
-            } catch (tokenError) {
-              console.error('Error setting calendar token:', tokenError);
-              setIsAuthenticated(false);
-              onAuthChange(false);
-            }
-          } else {
-            const signedIn = isSignedIn();
-            setIsAuthenticated(signedIn);
-            onAuthChange(signedIn);
+        if (code) {
+          try {
+            await exchangeCodeForToken(code);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            setIsAuthenticated(true);
+            onAuthChange(true);
+          } catch (error) {
+            console.error('Error exchanging code:', error);
+            setError('Erro ao conectar com Google Calendar');
           }
-        } else {
-          const signedIn = isSignedIn();
-          setIsAuthenticated(signedIn);
-          onAuthChange(signedIn);
         }
+
+        const connected = await checkCalendarAuth();
+        setIsAuthenticated(connected);
+        onAuthChange(connected);
       } catch (err) {
         console.error('Error initializing Google Calendar:', err);
         setError('Google Calendar não disponível no momento');
@@ -63,44 +49,24 @@ export const GoogleCalendarAuth: React.FC<GoogleCalendarAuthProps> = ({ onAuthCh
       setIsLoading(true);
       setError(null);
 
-      await handleAuthClick();
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        const token = (window as any).gapi?.client?.getToken()?.access_token;
-        if (token) {
-          await supabase.from('google_calendar_tokens').upsert({
-            user_id: session.user.id,
-            access_token: token,
-            expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-        }
-      }
-
-      setIsAuthenticated(true);
-      onAuthChange(true);
+      const authUrl = await getCalendarAuthUrl();
+      window.location.href = authUrl;
     } catch (err) {
       console.error('Error signing in:', err);
       setError('Erro ao fazer login no Google Calendar');
-    } finally {
       setIsLoading(false);
     }
   };
 
   const handleSignOut = async () => {
-    handleSignoutClick();
-
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user?.id) {
-      await supabase
-        .from('google_calendar_tokens')
-        .delete()
-        .eq('user_id', session.user.id);
+    try {
+      await logoutCalendar();
+      setIsAuthenticated(false);
+      onAuthChange(false);
+    } catch (err) {
+      console.error('Error signing out:', err);
+      setError('Erro ao desconectar do Google Calendar');
     }
-
-    setIsAuthenticated(false);
-    onAuthChange(false);
   };
 
   if (isLoading) {
