@@ -9,7 +9,7 @@ const Type: Type = {
     OBJECT: 'object',
     STRING: 'string',
     NUMBER: 'number',
-    ARRAY: 'array'
+    ARRAY: 'array' 
 };
 
 interface FunctionDeclaration {
