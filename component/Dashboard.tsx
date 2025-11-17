@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from "react";
 import type { Task, Transaction } from "../types";
-import GoogleCalendarAuth from "./GoogleCalendarAuth";
 
 // Utilitário: converte ISO (UTC) → YYYY-MM-DD local
 function toLocalYMD(iso: string) {
@@ -62,10 +61,6 @@ export default function Dashboard({ tasks, transactions, onOpenTaskModal }: Dash
         Dashboard
       </h1>
 
-      {/* Autenticação Google Calendar */}
-      <div className="mb-6">
-        <GoogleCalendarAuth />
-      </div>
 
       {/* Tarefas do dia atual */}
       <h2 className="text-xl text-white mb-2">Tarefas</h2>
