@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import type { Message } from '../../types';
-import { supabase } from '/src/services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 import { SYSTEM_INSTRUCTION, allTools } from '../config/geminiConfig';
 import { createApiTools } from '../services/toolImplementations';
 

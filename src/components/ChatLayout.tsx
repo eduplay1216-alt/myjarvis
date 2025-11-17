@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { Dashboard } from '../../componet/Dashboard';
+import Dashboard from '../../component/Dashboard';
 import { ChatMessage } from '../../component/ChatMessage';
 import { ChatInput } from '../../component/ChatInput';
-import { supabase } from '/src/services/supabaseClient';
+import { supabase } from '../services/supabaseClient';
 
 export const ChatLayout: React.FC = () => {
     const {
