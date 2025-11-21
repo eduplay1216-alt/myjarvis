@@ -1,5 +1,5 @@
 import { supabase } from '/src/services/supabaseClient';
-import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCalendarEvents } from '../../utils/calendarBackend';
+import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCalendarEvents } from '../../utils/calendar';
 
 export function createApiTools(userId: string) {
     return {

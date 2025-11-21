@@ -13,16 +13,9 @@ const UserIcon: React.FC = () => (
     </svg>
 );
 
-const NexusIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+const JarvisIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-        <defs>
-            <linearGradient id="nexusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#3b82f6" />
-                <stop offset="50%" stopColor="#06b6d4" />
-                <stop offset="100%" stopColor="#3b82f6" />
-            </linearGradient>
-        </defs>
     </svg>
 );
 
@@ -60,17 +53,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLoading }) 
 
   const containerClasses = isUser ? 'flex justify-end items-start space-x-1.5 sm:space-x-2 md:space-x-3' : 'flex justify-start items-start space-x-1.5 sm:space-x-2 md:space-x-3';
   const bubbleClasses = isUser
-    ? 'rounded-2xl p-3 sm:p-4 shadow-lg max-w-[80%] sm:max-w-[75%] md:max-w-[70%] lg:max-w-lg'
-    : 'rounded-2xl p-3 sm:p-4 shadow-lg min-h-[40px] flex items-center max-w-[80%] sm:max-w-[75%] md:max-w-[70%] lg:max-w-lg';
+    ? 'bg-blue-600 rounded-lg p-1.5 sm:p-2 md:p-3 shadow-md max-w-[80%] sm:max-w-[75%] md:max-w-[70%] lg:max-w-lg'
+    : 'bg-gray-800 rounded-lg p-1.5 sm:p-2 md:p-3 shadow-md min-h-[40px] flex items-center max-w-[80%] sm:max-w-[75%] md:max-w-[70%] lg:max-w-lg';
 
-  const iconContainerClasses = `w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 rounded-2xl flex items-center justify-center shadow-lg ${isUser ? 'bg-white/5 border border-white/10' : 'bg-gradient-to-br from-blue-500 via-cyan-400 to-blue-600'}`;
+  const iconContainerClasses = `w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 flex-shrink-0 rounded-full flex items-center justify-center border-2 ${isUser ? 'bg-gray-700 border-gray-500' : 'bg-blue-500/20 border-blue-400'}`;
 
   const UserMessage = () => (
     <>
-      <div className={bubbleClasses} style={{
-        background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)'
-      }}>
-        <p className="text-sm sm:text-base text-white whitespace-pre-wrap break-words font-medium">{message.text}</p>
+      <div className={bubbleClasses}>
+        <p className="text-xs sm:text-sm md:text-base text-white whitespace-pre-wrap break-words">{message.text}</p>
       </div>
       <div className={iconContainerClasses}>
         <UserIcon />
@@ -81,19 +72,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLoading }) 
   const ModelMessage = () => (
     <>
       <div className={iconContainerClasses}>
-        <NexusIcon />
+        <JarvisIcon />
       </div>
-      <div className={bubbleClasses} style={{
-        background: 'rgba(255, 255, 255, 0.05)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)'
-      }}>
+      <div className={bubbleClasses}>
         {isLoading && !message.text ? (
-          <div className="w-5 h-5 sm:w-6 sm:h-6">
+          <div className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6">
             <LoadingSpinner />
           </div>
         ) : (
-          <p className="text-sm sm:text-base text-gray-200 whitespace-pre-wrap break-words min-w-0">
+          <p className="text-xs sm:text-sm md:text-base text-gray-200 whitespace-pre-wrap break-words min-w-0">
             {renderMarkdown(message.text)}
           </p>
         )}
